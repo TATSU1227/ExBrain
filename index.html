@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>のうと − ブレインマップメモ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='%23FF5C7A'%3E%3Cellipse cx='32' cy='36' rx='22' ry='18'/%3E%3Ccircle cx='20' cy='23' r='10'/%3E%3Ccircle cx='32' cy='19' r='11'/%3E%3Ccircle cx='44' cy='23' r='10'/%3E%3Cpath d='M40 48h10a4 4 0 0 1 0 8H40z'/%3E%3C/g%3E%3Cg fill='none' stroke='%231F2440' stroke-width='3.6' stroke-linecap='round'%3E%3Cpath d='M32 15c-2 8 3 12 1 20s2 10 0 15'/%3E%3Cpath d='M17 30q7-3 9 4'/%3E%3Cpath d='M47 30q-7-3-9 4'/%3E%3Cpath d='M22 44q5 5 9 2'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root{
+  --accent:#FF5C7A;
+  --accent-soft:rgba(255,92,122,.13);
+  --ink:#1F2440;
+  --sub:#8A90A8;
+  --bg:#F5F6FA;
+  --surface:#FFFFFF;
+  --line:rgba(31,36,64,.08);
+  --shadow:0 8px 24px rgba(31,36,64,.10);
+  --shadow-lg:0 16px 40px rgba(31,36,64,.16);
+  --node-bg:#FFFFFF;
+  --dot:rgba(31,36,64,.06);
+  --tabbar-bg:rgba(255,255,255,.82);
+  --sheet-bg:#FFFFFF;
+  --danger:#E5484D;
+}
+[data-theme="dark"]{
+  --accent:#FF6E88;
+  --accent-soft:rgba(255,110,136,.16);
+  --ink:#EFF0F7;
+  --sub:#98A0BC;
+  --bg:#14172A;
+  --surface:#1E2238;
+  --line:rgba(239,240,247,.08);
+  --shadow:0 8px 24px rgba(0,0,0,.35);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.5);
+  --node-bg:#252A45;
+  --dot:rgba(239,240,247,.06);
+  --tabbar-bg:rgba(30,34,56,.82);
+  --sheet-bg:#20243C;
+  --danger:#FF6369;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+[hidden]{display:none!important}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  background:var(--bg);color:var(--ink);
+  position:fixed;inset:0;
+  -webkit-user-select:none;user-select:none;
+  touch-action:manipulation;
+  transition:background .3s;
+}
+button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+svg{display:block}
+
+/* ── タップアニメーション ───────────── */
+.press{transition:transform .16s cubic-bezier(.34,1.56,.64,1)}
+.press.pressed{transform:scale(.90)}
+.node-pill.press.pressed{transform:scale(.94)}
+
+/* ── 画面切替 ───────────── */
+.screen{position:fixed;inset:0;display:none;flex-direction:column}
+.screen.active{display:flex;animation:screenIn .32s cubic-bezier(.22,1,.36,1)}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.page{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px 140px;flex:1}
+.page-head{
+  display:flex;align-items:center;gap:10px;
+  padding:calc(18px + env(safe-area-inset-top)) 2px 14px;
+}
+.page-head .logo{width:34px;height:34px;flex:none}
+.page-head h1{font-size:22px;font-weight:800;letter-spacing:.02em}
+.page-head .sub{margin-left:auto;font-size:11px;color:var(--sub);font-weight:600}
+
+/* ── マップ一覧 ───────────── */
+.map-card{
+  display:flex;align-items:center;gap:14px;
+  background:var(--surface);border-radius:20px;
+  padding:16px;margin-bottom:12px;
+  box-shadow:var(--shadow);
+  animation:cardIn .35s cubic-bezier(.22,1,.36,1) backwards;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.map-card .thumb{
+  width:44px;height:44px;border-radius:14px;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;
+}
+.map-card .info{flex:1;min-width:0}
+.map-card .title{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-card .meta{font-size:11px;color:var(--sub);margin-top:3px;font-weight:500}
+.map-card .more{
+  width:36px;height:36px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;color:var(--sub);
+}
+.map-card .more:active{background:var(--accent-soft)}
+
+.empty-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;color:var(--sub);text-align:center;padding:40px 30px;
+}
+.empty-state .art{width:88px;height:88px;opacity:.9}
+.empty-state p{font-size:13px;line-height:1.8;font-weight:500}
+
+/* ── FAB ───────────── */
+.fab{
+  width:56px;height:56px;flex:none;border-radius:50%;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 26px rgba(255,92,122,.4);
+}
+.fab .ic{transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.fab.open .ic{transform:rotate(45deg)}
+
+/* ── ツールメニュー ───────────── */
+.tool-menu{
+  position:fixed;z-index:39;
+  right:14px;bottom:calc(92px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+  pointer-events:none;
+}
+.tool-menu.open{pointer-events:auto}
+.tool-btn{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);color:var(--ink);
+  border-radius:999px;padding:11px 18px 11px 13px;
+  font-size:13px;font-weight:700;
+  box-shadow:var(--shadow);
+  opacity:0;transform:translateY(16px) scale(.9);
+  transition:opacity .22s,transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.tool-menu.open .tool-btn{opacity:1;transform:none}
+.tool-btn .ic{width:20px;height:20px;color:var(--accent)}
+.tool-btn.danger .ic{color:var(--danger)}
+
+/* ── キャンバス ───────────── */
+#viewport{
+  position:absolute;inset:0;overflow:hidden;
+  touch-action:none;
+  background-image:radial-gradient(var(--dot) 1.6px,transparent 1.6px);
+  background-size:26px 26px;
+}
+#world{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;will-change:transform}
+#links{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
+#links path{fill:none;stroke-linecap:round;transition:opacity .25s}
+#links path.enter{opacity:0}
+
+.node{
+  position:absolute;left:0;top:0;
+  width:max-content;
+  transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .22s;
+  will-change:transform;
+}
+.node.enter{opacity:0}
+.node.exit{opacity:0;pointer-events:none}
+.node.dragging{transition:none;z-index:5}
+.node.dragging .node-pill{box-shadow:0 16px 34px rgba(31,36,64,.32)}
+.node-pill{
+  position:relative;
+  width:max-content;
+  max-width:210px;
+  text-align:center;
+  padding:9px 16px;border-radius:999px;
+  font-size:13px;font-weight:700;line-height:1.45;
+  background:var(--node-bg);color:var(--ink);
+  border:2.5px solid var(--c,#ccc);
+  box-shadow:0 3px 10px rgba(31,36,64,.08);
+  overflow-wrap:break-word;
+}
+.node.d0 .node-pill{
+  background:var(--c);color:#fff;border-color:var(--c);
+  font-size:16px;font-weight:800;padding:13px 24px;max-width:230px;
+  box-shadow:0 8px 22px rgba(31,36,64,.2);
+}
+.node.d1 .node-pill{background:var(--c);color:#fff;border-color:var(--c)}
+.node.selected .node-pill{box-shadow:0 0 0 4px var(--accent-soft),0 6px 18px rgba(31,36,64,.18)}
+.badge{
+  position:absolute;top:50%;
+  min-width:20px;height:20px;padding:0 5px;border-radius:999px;
+  background:var(--c);color:#fff;
+  font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  transform:translateY(-50%);
+  box-shadow:0 2px 6px rgba(31,36,64,.2);
+  border:2px solid var(--bg);
+}
+.badge.r{right:-12px}.badge.l{left:-12px}
+.node.d1 .badge{background:#fff;color:var(--c)}
+.node.d0 .badge{background:#fff;color:var(--c)}
+
+/* ── ノードのコンテキストバー ───────────── */
+#ctxbar{
+  position:absolute;left:0;top:0;
+  display:flex;gap:2px;padding:5px;
+  background:var(--surface);border-radius:999px;
+  box-shadow:var(--shadow-lg);
+  transform-origin:0 0;
+  transition:opacity .18s,transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+#ctxbar.hide{opacity:0;pointer-events:none;transform:scale(.7)}
+#ctxbar button{
+  width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:var(--ink);
+}
+#ctxbar button .ic{width:19px;height:19px}
+#ctxbar button.cadd{color:var(--accent)}
+#ctxbar button.cdel{color:var(--danger)}
+
+/* ── キャンバス上部（タイトル・Undo/Redo） ───────────── */
+.canvas-top{
+  position:absolute;z-index:20;
+  top:calc(14px + env(safe-area-inset-top));left:0;right:0;
+  display:flex;justify-content:center;pointer-events:none;
+}
+#mapTitleChip{
+  pointer-events:auto;
+  display:flex;align-items:center;gap:7px;
+  background:var(--tabbar-bg);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  padding:9px 18px;border-radius:999px;
+  font-size:13px;font-weight:800;
+  box-shadow:var(--shadow);max-width:44vw;
+}
+#mapTitleChip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mapTitleChip .ic{width:14px;height:14px;color:var(--sub);flex:none}
+.histbar{
+  position:absolute;z-index:20;
+  top:calc(14px + env(safe-area-inset-top));left:14px;
+  display:flex;gap:8px;
+}
+.histbar button{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--tabbar-bg);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:var(--shadow);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .2s;
+}
+.histbar button .ic{width:18px;height:18px}
+.histbar button:disabled{opacity:.32}
+
+/* ── 見た目カスタム ───────────── */
+#world[data-shape="round"] .node-pill{border-radius:16px}
+#world[data-shape="square"] .node-pill{border-radius:6px}
+.badge.b{top:auto;bottom:-10px;left:50%;right:auto;transform:translateX(-50%)}
+.stl-label{font-size:11px;font-weight:800;color:var(--sub);letter-spacing:.06em;margin:2px 6px 7px}
+#sheet .seg{margin:0 0 14px}
+#sheet .palette{justify-content:flex-start;padding:2px 0 8px}
+
+/* ── つかいかた ───────────── */
+.guide-item{display:flex;gap:12px;align-items:flex-start;padding:15px 16px}
+.guide-item + .guide-item{border-top:1px solid var(--line)}
+.guide-num{
+  width:26px;height:26px;flex:none;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);
+  font-weight:800;font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+}
+.guide-item b{font-size:14px}
+.guide-item p{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.75;font-weight:500}
+
+/* ── ボトムドック（タブバー＋アクションボタン） ───────────── */
+.bottom-dock{
+  position:fixed;z-index:40;
+  left:14px;right:14px;
+  bottom:calc(14px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:10px;
+}
+.tabbar{
+  flex:1;display:flex;gap:2px;padding:6px;
+  background:var(--tabbar-bg);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:999px;
+  box-shadow:var(--shadow-lg),0 0 0 .5px var(--line);
+}
+.tabbar button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 2px;border-radius:999px;
+  color:var(--sub);font-size:10px;font-weight:700;letter-spacing:.02em;
+  white-space:nowrap;
+  transition:color .2s,background .2s;
+}
+.tabbar button .ic{width:21px;height:21px}
+.tabbar button.active{color:#fff;background:var(--accent);box-shadow:0 6px 14px rgba(255,92,122,.35)}
+
+/* ── 設定 ───────────── */
+.set-group{margin-bottom:22px}
+.set-label{font-size:11px;font-weight:800;color:var(--sub);letter-spacing:.08em;margin:0 6px 8px}
+.set-card{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.set-row{
+  display:flex;align-items:center;gap:12px;
+  padding:15px 16px;width:100%;text-align:left;
+  font-size:14px;font-weight:600;
+}
+.set-row + .set-row{border-top:1px solid var(--line)}
+.set-row .ic{width:20px;height:20px;color:var(--accent);flex:none}
+.set-row.danger{color:var(--danger)}
+.set-row.danger .ic{color:var(--danger)}
+.set-row .chev{margin-left:auto;color:var(--sub);width:16px;height:16px}
+.set-row:active{background:var(--accent-soft)}
+.seg{display:flex;gap:4px;background:var(--bg);border-radius:12px;padding:4px;margin:12px 16px 16px}
+.seg button{
+  flex:1;padding:8px 0;border-radius:9px;
+  font-size:12px;font-weight:700;color:var(--sub);
+  transition:background .2s,color .2s;
+}
+.seg button.active{background:var(--surface);color:var(--accent);box-shadow:0 2px 8px rgba(31,36,64,.1)}
+.about{padding:16px;font-size:12px;color:var(--sub);line-height:1.9;font-weight:500}
+.about b{color:var(--ink)}
+
+/* ── ボトムシート ───────────── */
+#backdrop{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(15,18,36,.42);
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+#backdrop.show{opacity:1;pointer-events:auto}
+#sheet{
+  position:fixed;z-index:51;left:0;right:0;
+  bottom:0;
+  background:var(--sheet-bg);
+  border-radius:26px 26px 0 0;
+  padding:12px 20px calc(28px + env(safe-area-inset-bottom));
+  transform:translateY(105%);
+  transition:transform .34s cubic-bezier(.22,1,.36,1);
+  box-shadow:var(--shadow-lg);
+  max-height:78vh;display:flex;flex-direction:column;
+}
+#sheet.show{transform:none}
+.sheet-grab{width:38px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 16px}
+.sheet-title{font-size:16px;font-weight:800;margin-bottom:16px;text-align:center}
+.sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sheet-input{
+  width:100%;padding:14px 16px;border-radius:14px;
+  border:2px solid var(--line);background:var(--bg);color:var(--ink);
+  font-size:15px;font-weight:600;outline:none;
+  transition:border-color .2s;
+}
+.sheet-input:focus{border-color:var(--accent)}
+textarea.sheet-input{min-height:130px;resize:none;font-size:12px;font-weight:500;line-height:1.6}
+.sheet-actions{display:flex;gap:10px;margin-top:16px}
+.btn{
+  flex:1;padding:14px;border-radius:999px;
+  font-size:14px;font-weight:800;text-align:center;
+}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 6px 18px rgba(255,92,122,.35)}
+.btn-ghost{background:var(--bg);color:var(--sub)}
+.btn-danger{background:var(--danger);color:#fff}
+.sheet-list button{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:15px 6px;font-size:14px;font-weight:700;text-align:left;
+}
+.sheet-list button + button{border-top:1px solid var(--line)}
+.sheet-list .ic{width:20px;height:20px;color:var(--accent)}
+.sheet-list button.danger{color:var(--danger)}
+.sheet-list button.danger .ic{color:var(--danger)}
+.palette{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;padding:8px 0 4px}
+.palette button{
+  width:44px;height:44px;border-radius:50%;
+  border:3px solid transparent;
+  display:flex;align-items:center;justify-content:center;
+}
+.palette button.sel{border-color:var(--ink)}
+.palette .dot{width:32px;height:32px;border-radius:50%}
+.palette .auto{font-size:10px;font-weight:800;color:var(--sub);width:32px;height:32px;border-radius:50%;border:2px dashed var(--sub);display:flex;align-items:center;justify-content:center}
+.sheet-note{font-size:11px;color:var(--sub);text-align:center;margin-top:12px;font-weight:500;line-height:1.7}
+
+/* ── トースト ───────────── */
+#toast{
+  position:fixed;z-index:60;left:50%;
+  bottom:calc(92px + env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(18px);
+  background:var(--ink);color:var(--bg);
+  padding:11px 22px;border-radius:999px;
+  font-size:13px;font-weight:700;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .3s cubic-bezier(.22,1,.36,1);
+  box-shadow:var(--shadow-lg);white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+
+<!-- ══════════ SVGアイコン定義 ══════════ -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- 脳ロゴ -->
+    <g id="i-brain">
+      <g fill="#FF5C7A">
+        <ellipse cx="32" cy="36" rx="22" ry="18"/>
+        <circle cx="20" cy="23" r="10"/><circle cx="32" cy="19" r="11"/><circle cx="44" cy="23" r="10"/>
+        <path d="M40 48h10a4 4 0 0 1 0 8H40z"/>
+      </g>
+      <g fill="none" stroke="#1F2440" stroke-width="3.6" stroke-linecap="round">
+        <path d="M32 15c-2 8 3 12 1 20s2 10 0 15"/>
+        <path d="M17 30q7-3 9 4"/><path d="M47 30q-7-3-9 4"/><path d="M22 44q5 5 9 2"/>
+      </g>
+    </g>
+    <!-- 24x24 ストロークアイコン -->
+    <g id="i-maps" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3.5" y="4" width="17" height="7" rx="3.5"/>
+      <rect x="3.5" y="14" width="11" height="6.5" rx="3.25"/>
+      <circle cx="19.5" cy="17.2" r="2.2"/>
+    </g>
+    <g id="i-canvas" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <rect x="8.5" y="9" width="7" height="6" rx="3"/>
+      <path d="M15.5 12h3M5.5 7.5 8.5 10M5.5 16.5 8.5 14"/>
+      <circle cx="20.5" cy="12" r="1.9"/><circle cx="3.8" cy="6.5" r="1.9"/><circle cx="3.8" cy="17.5" r="1.9"/>
+    </g>
+    <g id="i-gear" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <circle cx="12" cy="12" r="3.4"/>
+      <path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.84 1.84M7.34 16.66 5.5 18.5M18.5 18.5l-1.84-1.84M7.34 7.34 5.5 5.5"/>
+    </g>
+    <g id="i-plus" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </g>
+    <g id="i-pen" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m14.5 5.5 4 4L8 20l-4.6.6L4 16z"/><path d="m13 7 4 4"/>
+    </g>
+    <g id="i-drop" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round">
+      <path d="M12 3.5c3.4 4 6 7.2 6 10.4a6 6 0 0 1-12 0c0-3.2 2.6-6.4 6-10.4z"/>
+    </g>
+    <g id="i-trash" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.5 6.5h15M9.5 6V4.5A1.5 1.5 0 0 1 11 3h2a1.5 1.5 0 0 1 1.5 1.5V6M6.5 6.5 7.4 19a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-12.5"/>
+      <path d="M10 10.5v6M14 10.5v6"/>
+    </g>
+    <g id="i-undo" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8.5 4.5 4 9l4.5 4.5"/><path d="M4 9h9.5a6 6 0 0 1 0 12H9"/>
+    </g>
+    <g id="i-expand" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 4.5H4.5V9M15 4.5h4.5V9M9 19.5H4.5V15M15 19.5h4.5V15"/>
+    </g>
+    <g id="i-collapse" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.5 9H9V4.5M19.5 9H15V4.5M4.5 15H9v4.5M19.5 15H15v4.5"/>
+    </g>
+    <g id="i-target" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>
+    </g>
+    <g id="i-minus" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></g>
+    <g id="i-more" fill="currentColor"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></g>
+    <g id="i-export" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 14.5V3.5M8 7l4-3.5L16 7"/><path d="M4.5 13v5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-5"/>
+    </g>
+    <g id="i-import" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3.5v11M8 11l4 3.5L16 11"/><path d="M4.5 13v5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-5"/>
+    </g>
+    <g id="i-copy" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round">
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5v-2a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>
+    </g>
+    <g id="i-dup" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5v-2a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/><path d="M14 11.5v5M11.5 14h5"/>
+    </g>
+    <g id="i-chev" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5.5 6.5 6.5L9 18.5"/></g>
+    <g id="i-help" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <circle cx="12" cy="12" r="8.6"/>
+      <path d="M9.7 9.5a2.4 2.4 0 1 1 3.3 2.8c-.8.4-1 1-1 1.9"/>
+      <circle cx="12" cy="16.8" r=".5" fill="currentColor" stroke="none"/>
+    </g>
+    <g id="i-moon" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 13.5A8 8 0 0 1 10.5 4 8 8 0 1 0 20 13.5z"/>
+    </g>
+    <g id="i-add-r" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <circle cx="5.5" cy="12" r="2.4"/><path d="M8.5 12h5"/><path d="M17.5 9v6M14.5 12h6"/>
+    </g>
+    <g id="i-add-l" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <circle cx="18.5" cy="12" r="2.4"/><path d="M15.5 12h-5"/><path d="M6.5 9v6M3.5 12h6"/>
+    </g>
+    <g id="i-add-sib" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3.5" y="4" width="11" height="6" rx="3"/>
+      <rect x="3.5" y="14" width="11" height="6" rx="3" stroke-dasharray="2.5 2.5"/>
+      <path d="M19 14.5v5M16.5 17h5"/>
+    </g>
+    <g id="i-add-child" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3.5" y="3.5" width="11" height="6" rx="3"/>
+      <path d="M9 9.5v5a3 3 0 0 0 3 3h1.5"/>
+      <path d="M18 15v5M15.5 17.5h5"/>
+    </g>
+    <g id="i-redo" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15.5 4.5 20 9l-4.5 4.5"/><path d="M20 9h-9.5a6 6 0 0 0 0 12H15"/>
+    </g>
+    <g id="i-sliders" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <path d="M5 4.5v5M5 14.5v5M12 4.5v1.5M12 10.5v9M19 4.5v8.5M19 17.5v2"/>
+      <circle cx="5" cy="11.7" r="2.1"/><circle cx="12" cy="8.2" r="2.1"/><circle cx="19" cy="15.2" r="2.1"/>
+    </g>
+  </defs>
+</svg>
+
+<!-- ══════════ マップ一覧 ══════════ -->
+<div id="screen-maps" class="screen active">
+  <div class="page">
+    <header class="page-head">
+      <svg class="logo" viewBox="0 0 64 64"><use href="#i-brain"/></svg>
+      <h1>のうと</h1>
+      <span class="sub" id="mapCount"></span>
+    </header>
+    <div id="mapList"></div>
+    <div id="mapsEmpty" class="empty-state" hidden>
+      <svg class="art" viewBox="0 0 64 64"><use href="#i-brain"/></svg>
+      <p>まだマップがありません。<br>右下の＋ボタンから、あたまの中を<br>ひろげてみましょう！</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ キャンバス ══════════ -->
+<div id="screen-canvas" class="screen">
+  <div id="viewport">
+    <div id="world">
+      <svg id="links"></svg>
+      <div id="nodes"></div>
+      <div id="ctxbar" class="hide"></div>
+    </div>
+  </div>
+  <div class="canvas-top">
+    <button id="mapTitleChip" class="press">
+      <span id="mapTitleText">マップ</span>
+      <svg class="ic" viewBox="0 0 24 24"><use href="#i-pen"/></svg>
+    </button>
+  </div>
+  <div class="histbar" style="display:none">
+    <button id="btnUndo" class="press" disabled><svg class="ic" viewBox="0 0 24 24"><use href="#i-undo"/></svg></button>
+    <button id="btnRedo" class="press" disabled><svg class="ic" viewBox="0 0 24 24"><use href="#i-redo"/></svg></button>
+  </div>
+  <div id="canvasEmpty" class="empty-state" hidden>
+    <svg class="art" viewBox="0 0 64 64"><use href="#i-brain"/></svg>
+    <p>マップがひらかれていません。<br>「マップ」タブから選ぶか、<br>あたらしく作ってみましょう！</p>
+  </div>
+  <div class="tool-menu" id="toolMenu">
+    <button class="tool-btn press" data-tool="style"><svg class="ic" viewBox="0 0 24 24"><use href="#i-sliders"/></svg>マップのスタイル</button>
+    <button class="tool-btn press" data-tool="expandAll"><svg class="ic" viewBox="0 0 24 24"><use href="#i-expand"/></svg>すべてひらく</button>
+    <button class="tool-btn press" data-tool="collapseAll"><svg class="ic" viewBox="0 0 24 24"><use href="#i-collapse"/></svg>すべてとじる</button>
+    <button class="tool-btn press" data-tool="center"><svg class="ic" viewBox="0 0 24 24"><use href="#i-target"/></svg>ぜんたいを表示</button>
+    <button class="tool-btn press" data-tool="addChild"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg>枝をふやす</button>
+  </div>
+</div>
+
+<!-- ══════════ つかいかた ══════════ -->
+<div id="screen-guide" class="screen">
+  <div class="page">
+    <header class="page-head">
+      <svg class="logo" viewBox="0 0 64 64"><use href="#i-brain"/></svg>
+      <h1>つかいかた</h1>
+    </header>
+    <div class="set-group">
+      <div class="set-label">きほんのながれ</div>
+      <div class="set-card">
+        <div class="guide-item"><span class="guide-num">1</span><div><b>マップをつくる</b><p>右下の＋ボタンから。まんなかに置きたいテーマを決めます。</p></div></div>
+        <div class="guide-item"><span class="guide-num">2</span><div><b>えらぶ</b><p>ピルを1回タップすると選択されて、上に操作バーが出ます。もう1回タップすると、子の枝がアコーディオンでひらいたりとじたり。</p></div></div>
+        <div class="guide-item"><span class="guide-num">3</span><div><b>枝をふやす</b><p>操作バーの左の2つが追加ボタン。「となりにふやす」は同じ親の下にきょうだいを、「下にふやす」はそのピルの子を作ります。まんなかのピルだけは、左にふやす／右にふやすの2つになります。</p></div></div>
+        <div class="guide-item"><span class="guide-num">4</span><div><b>うごかす</b><p>なにもないところや選んでいないピルをドラッグでキャンバス移動、ピンチで拡大・縮小。選択中のピルはドラッグでならべかえ・左右の入れかえができます。</p></div></div>
+        <div class="guide-item"><span class="guide-num">5</span><div><b>きせかえる</b><p>右下＋メニューの「マップのスタイル」から、構造（マップ／ツリー／組織図／年表）、タイルのかたち、線のかたち・みため・ふとさ・いろを変えられます。</p></div></div>
+        <div class="guide-item"><span class="guide-num">6</span><div><b>まもる</b><p>データはこの端末だけに保存されます。「設定」からJSON書き出しで、いつでもバックアップできます。</p></div></div>
+      </div>
+    </div>
+    <div class="set-group">
+      <div class="set-label">こまったら</div>
+      <div class="set-card">
+        <div class="guide-item"><span class="guide-num">?</span><div><b>まちがえた・やりなおしたい</b><p>キャンバス左上の矢印ボタンで、もとに戻す／やりなおすができます。</p></div></div>
+        <div class="guide-item"><span class="guide-num">?</span><div><b>マップが見えなくなった</b><p>右下＋メニューの「ぜんたいを表示」で、マップ全体がおさまる位置にもどります。</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 設定 ══════════ -->
+<div id="screen-settings" class="screen">
+  <div class="page">
+    <header class="page-head">
+      <svg class="logo" viewBox="0 0 64 64"><use href="#i-brain"/></svg>
+      <h1>設定</h1>
+    </header>
+
+    <div class="set-group">
+      <div class="set-label">がいかん</div>
+      <div class="set-card">
+        <div class="set-row" style="padding-bottom:0"><svg class="ic" viewBox="0 0 24 24"><use href="#i-moon"/></svg>テーマ</div>
+        <div class="seg" id="themeSeg">
+          <button data-theme-opt="auto">じどう</button>
+          <button data-theme-opt="light">ライト</button>
+          <button data-theme-opt="dark">ダーク</button>
+        </div>
+        <div class="set-row" style="padding-bottom:0;border-top:1px solid var(--line)"><svg class="ic" viewBox="0 0 24 24"><use href="#i-canvas"/></svg>枝のながさ</div>
+        <div class="seg" id="branchSeg">
+          <button data-branch="short">みじかめ</button>
+          <button data-branch="normal">ふつう</button>
+          <button data-branch="long">ながめ</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">データ</div>
+      <div class="set-card">
+        <button class="set-row press" id="btnExportAll"><svg class="ic" viewBox="0 0 24 24"><use href="#i-export"/></svg>すべてJSONで書き出し<svg class="chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg></button>
+        <button class="set-row press" id="btnCopyAll"><svg class="ic" viewBox="0 0 24 24"><use href="#i-copy"/></svg>JSONをコピーで書き出し<svg class="chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg></button>
+        <button class="set-row press" id="btnImport"><svg class="ic" viewBox="0 0 24 24"><use href="#i-import"/></svg>JSONを読み込み<svg class="chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg></button>
+        <button class="set-row danger press" id="btnWipe"><svg class="ic" viewBox="0 0 24 24"><use href="#i-trash"/></svg>すべてのデータを削除<svg class="chev" viewBox="0 0 24 24"><use href="#i-chev"/></svg></button>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">このアプリ</div>
+      <div class="set-card">
+        <div class="about">
+          <b>のうと v1.0</b><br>
+          あたまの中をピルでつなぐ、ブレインマップメモ。<br>
+          データはこの端末のローカルストレージにのみ保存されます。機種変更やバックアップの前には、JSON書き出しをおすすめします。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ボトムドック ══════════ -->
+<div class="bottom-dock">
+  <nav class="tabbar">
+    <button class="press active" data-tab="maps"><svg class="ic" viewBox="0 0 24 24"><use href="#i-maps"/></svg>マップ</button>
+    <button class="press" data-tab="canvas"><svg class="ic" viewBox="0 0 24 24"><use href="#i-canvas"/></svg>キャンバス</button>
+    <button class="press" data-tab="guide"><svg class="ic" viewBox="0 0 24 24"><use href="#i-help"/></svg>つかいかた</button>
+    <button class="press" data-tab="settings"><svg class="ic" viewBox="0 0 24 24"><use href="#i-gear"/></svg>設定</button>
+  </nav>
+  <button id="fabMain" class="fab press"><svg class="ic" width="26" height="26" viewBox="0 0 24 24"><use href="#i-plus"/></svg></button>
+</div>
+
+<div id="backdrop"></div>
+<div id="sheet"></div>
+<div id="toast"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════
+   のうと − ブレインマップメモ
+   ════════════════════════════════════════ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
+
+const store = (()=>{
+  try{ localStorage.setItem('__nouto_t','1'); localStorage.removeItem('__nouto_t'); return localStorage; }
+  catch(e){ // プレビュー環境などでlocalStorageが使えない場合はメモリ保存
+    const m = {};
+    return { getItem:k=> (k in m ? m[k] : null), setItem:(k,v)=>{ m[k]=String(v); }, removeItem:k=>{ delete m[k]; } };
+  }
+})();
+const PALETTE = ['#FF5C7A','#FF9E57','#F2B32C','#35C48D','#4E97F5','#9B6BF2'];
+const ROOT_COLOR = '#FF5C7A';
+const V_GAP = 16, H_GAP1 = 56, H_GAP = 40;
+const BRANCH_FACTOR = { short:.55, normal:1, long:1.7 };
+const LS_MAPS = 'nouto:maps', LS_SET = 'nouto:settings', LS_LAST = 'nouto:last';
+
+/* ── 状態 ───────────── */
+let maps = [];
+let settings = { theme:'auto', branch:'normal' };
+let cur = null;            // 開いているマップ
+let selectedId = null;     // 選択中ノードid
+let undoStack = [];
+let redoStack = [];
+let view = { x:0, y:0, z:1 };
+let viewInited = false;
+let lastTap = { id:null, t:0 };
+
+/* ── ストレージ ───────────── */
+function loadAll(){
+  try{ maps = JSON.parse(store.getItem(LS_MAPS)) || []; }catch(e){ maps = []; }
+  try{ Object.assign(settings, JSON.parse(store.getItem(LS_SET)) || {}); }catch(e){}
+}
+/* ── JSONヘルパー ─────────────
+   レイアウト用の一時プロパティ（_parentなど）は循環参照を含むため、
+   保存・書き出し時は必ずこのreplacerで除外する */
+const NO_PRIVATE = (k, v) => (typeof k === 'string' && k.charAt(0) === '_') ? undefined : v;
+const cleanClone = o => JSON.parse(JSON.stringify(o, NO_PRIVATE));
+
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{ store.setItem(LS_MAPS, JSON.stringify(maps, NO_PRIVATE)); }
+    catch(e){ toast('保存に失敗: ' + (e.message || e)); }
+  }, 250);
+}
+function saveSettings(){ try{ store.setItem(LS_SET, JSON.stringify(settings)); }catch(e){} }
+
+/* エラーを画面上でも確認できるように（実機デバッグ用） */
+window.addEventListener('error', ev=>{
+  try{ toast('エラー: ' + (ev.message || '不明')); }catch(e){}
+});
+
+/* ── テーマ ───────────── */
+const mq = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(){
+  const t = settings.theme === 'auto' ? (mq.matches ? 'dark' : 'light') : settings.theme;
+  document.documentElement.dataset.theme = t;
+  $$('#themeSeg button').forEach(b => b.classList.toggle('active', b.dataset.themeOpt === settings.theme));
+}
+if(mq.addEventListener) mq.addEventListener('change', applyTheme);
+else if(mq.addListener) mq.addListener(applyTheme);
+$('#themeSeg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  settings.theme = b.dataset.themeOpt; saveSettings(); applyTheme();
+});
+
+/* ── 枝のながさ ───────────── */
+function applyBranchSeg(){
+  $$('#branchSeg button').forEach(b=> b.classList.toggle('active', b.dataset.branch === settings.branch));
+}
+$('#branchSeg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  settings.branch = b.dataset.branch; saveSettings(); applyBranchSeg();
+  if(cur) renderMap();
+});
+
+/* ── 押下アニメーション（タップ即時反応） ───────────── */
+document.addEventListener('pointerdown', e=>{
+  const el = e.target.closest('.press');
+  if(el) el.classList.add('pressed');
+}, {passive:true, capture:true});
+['pointerup','pointercancel'].forEach(ev=>
+  document.addEventListener(ev, ()=> $$('.press.pressed').forEach(el=>el.classList.remove('pressed')), {passive:true})
+);
+
+/* ── トースト ───────────── */
+let toastTimer = null;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2000);
+}
+
+/* ── ボトムシート ───────────── */
+function openSheet(html, onOpen){
+  const sh = $('#sheet');
+  sh.innerHTML = '<div class="sheet-grab"></div>' + html;
+  $('#backdrop').classList.add('show');
+  requestAnimationFrame(()=>{ sh.classList.add('show'); onOpen && onOpen(sh); });
+}
+function closeSheet(){
+  $('#sheet').classList.remove('show');
+  $('#backdrop').classList.remove('show');
+}
+$('#backdrop').addEventListener('click', closeSheet);
+
+function promptSheet(title, value, placeholder, onSave){
+  openSheet(`
+    <div class="sheet-title">${title}</div>
+    <input class="sheet-input" id="shInput" placeholder="${placeholder}" maxlength="120">
+    <div class="sheet-actions">
+      <button class="btn btn-ghost press" id="shCancel">キャンセル</button>
+      <button class="btn btn-primary press" id="shOk">保存する</button>
+    </div>`, sh=>{
+    const inp = sh.querySelector('#shInput');
+    inp.value = value || '';
+    setTimeout(()=>{ inp.focus(); inp.select(); }, 320);
+    const commit = ()=>{ const v = inp.value.trim(); if(v){ onSave(v); } closeSheet(); };
+    sh.querySelector('#shOk').addEventListener('click', commit);
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); });
+    sh.querySelector('#shCancel').addEventListener('click', closeSheet);
+  });
+}
+function confirmSheet(title, note, okLabel, onOk){
+  openSheet(`
+    <div class="sheet-title">${title}</div>
+    <div class="sheet-note">${note}</div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost press" id="shCancel">やめておく</button>
+      <button class="btn btn-danger press" id="shOk">${okLabel}</button>
+    </div>`, sh=>{
+    sh.querySelector('#shOk').addEventListener('click', ()=>{ closeSheet(); onOk(); });
+    sh.querySelector('#shCancel').addEventListener('click', closeSheet);
+  });
+}
+
+/* ════════════════════════════════════════
+   マップデータ操作
+   ════════════════════════════════════════ */
+function newNode(text){ return { id: uid(), text, color: null, collapsed: false, children: [] }; }
+function newMap(title){
+  return { id: uid(), title, created: Date.now(), updated: Date.now(),
+           root: Object.assign(newNode(title), { text: title }) };
+}
+function countNodes(n){ return 1 + n.children.reduce((s,c)=> s + countNodes(c), 0); }
+function countDesc(n){ return n.children.reduce((s,c)=> s + countNodes(c), 0); }
+const DECO_DEF = { shape:'pill', line:'curve', dash:'solid', width:'normal', color:null };
+function mapStyle(){ return (cur && cur.style) || 'map'; }
+function mapDeco(){
+  if(!cur) return DECO_DEF;
+  if(!cur.deco) cur.deco = Object.assign({}, DECO_DEF);
+  return cur.deco;
+}
+function findNode(n, id, parent=null){
+  if(n.id === id) return { node:n, parent };
+  for(const c of n.children){ const r = findNode(c, id, n); if(r) return r; }
+  return null;
+}
+function touch(){ if(cur){ cur.updated = Date.now(); save(); } }
+function serializeCur(){ return JSON.stringify({ title: cur.title, root: cur.root }, NO_PRIVATE); }
+function snapshot(){
+  if(!cur) return;
+  undoStack.push(serializeCur());
+  if(undoStack.length > 60) undoStack.shift();
+  redoStack.length = 0;
+  updateHist();
+}
+function restoreCur(s){
+  const o = JSON.parse(s);
+  cur.title = o.title; cur.root = o.root;
+  if(selectedId && !findNode(cur.root, selectedId)) selectedId = null;
+  touch(); renderMap(); renderTitle(); updateHist();
+}
+function undo(){
+  if(!cur || !undoStack.length){ toast('もどす操作がありません'); return; }
+  redoStack.push(serializeCur());
+  restoreCur(undoStack.pop());
+}
+function redo(){
+  if(!cur || !redoStack.length){ toast('やりなおす操作がありません'); return; }
+  undoStack.push(serializeCur());
+  restoreCur(redoStack.pop());
+}
+function updateHist(){
+  const u = $('#btnUndo'), r = $('#btnRedo');
+  if(u) u.disabled = !undoStack.length;
+  if(r) r.disabled = !redoStack.length;
+}
+
+/* ════════════════════════════════════════
+   マップ一覧画面
+   ════════════════════════════════════════ */
+function fmtDate(t){
+  const d = new Date(t);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function renderMapList(){
+  const list = $('#mapList'); list.innerHTML = '';
+  $('#mapsEmpty').hidden = maps.length > 0;
+  $('#mapCount').textContent = maps.length ? `${maps.length}まい` : '';
+  [...maps].sort((a,b)=> b.updated - a.updated).forEach((m,i)=>{
+    const col = m.root.color || PALETTE[i % PALETTE.length];
+    const card = document.createElement('div');
+    card.className = 'map-card press';
+    card.style.animationDelay = (i * 40) + 'ms';
+    card.innerHTML = `
+      <div class="thumb" style="background:${col}"><svg width="24" height="24" viewBox="0 0 24 24" style="color:#fff"><use href="#i-canvas"/></svg></div>
+      <div class="info">
+        <div class="title"></div>
+        <div class="meta">${countNodes(m.root)}ノード ・ 更新 ${fmtDate(m.updated)}</div>
+      </div>
+      <button class="more press"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-more"/></svg></button>`;
+    card.querySelector('.title').textContent = m.title;
+    card.addEventListener('click', e=>{
+      if(e.target.closest('.more')){ mapMenu(m); return; }
+      openMap(m.id);
+    });
+    list.appendChild(card);
+  });
+}
+function mapMenu(m){
+  openSheet(`
+    <div class="sheet-title">${escapeHtml(m.title)}</div>
+    <div class="sheet-list">
+      <button class="press" data-a="rename"><svg class="ic" viewBox="0 0 24 24"><use href="#i-pen"/></svg>名前を変える</button>
+      <button class="press" data-a="dup"><svg class="ic" viewBox="0 0 24 24"><use href="#i-dup"/></svg>複製する</button>
+      <button class="press" data-a="export"><svg class="ic" viewBox="0 0 24 24"><use href="#i-export"/></svg>このマップをJSONで書き出し</button>
+      <button class="press danger" data-a="del"><svg class="ic" viewBox="0 0 24 24"><use href="#i-trash"/></svg>削除する</button>
+    </div>`, sh=>{
+    sh.querySelector('.sheet-list').addEventListener('click', e=>{
+      const b = e.target.closest('button'); if(!b) return;
+      const a = b.dataset.a; closeSheet();
+      if(a==='rename') setTimeout(()=> promptSheet('マップの名前', m.title, 'マップ名を入力', v=>{
+        m.title = v; if(m.root.text === '' ) m.root.text = v;
+        m.updated = Date.now(); save(); renderMapList(); renderTitle();
+      }), 250);
+      if(a==='dup'){
+        const copy = cleanClone(m);
+        copy.id = uid(); copy.title += ' のコピー'; copy.created = copy.updated = Date.now();
+        reassignIds(copy.root); maps.push(copy); save(); renderMapList(); toast('複製しました');
+      }
+      if(a==='export') exportJSON({ app:'nouto', version:1, exported:new Date().toISOString(), maps:[m] }, safeName(m.title));
+      if(a==='del') setTimeout(()=> confirmSheet('このマップを削除？', `「${escapeHtml(m.title)}」のノードがすべて消えます。この操作はもとに戻せません。`, '削除する', ()=>{
+        maps = maps.filter(x=> x.id !== m.id);
+        if(cur && cur.id === m.id){ cur = null; store.removeItem(LS_LAST); renderCanvasState(); }
+        save(); renderMapList(); toast('削除しました');
+      }), 250);
+    });
+  });
+}
+function reassignIds(n){ n.id = uid(); n.children.forEach(reassignIds); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function safeName(s){ return s.replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,30) || 'map'; }
+
+function newMapPrompt(){
+  promptSheet('あたらしいマップ', '', '中心になるテーマ（例：旅行の計画）', v=>{
+    const m = newMap(v);
+    maps.push(m); save();
+    openMap(m.id);
+    toast('マップを作りました！');
+  });
+}
+// ドックの＋：キャンバス表示中はツールメニュー、それ以外は新規マップ
+$('#fabMain').addEventListener('click', ()=>{
+  const active = document.querySelector('.tabbar button.active');
+  if(active && active.dataset.tab === 'canvas' && cur) toggleToolMenu();
+  else newMapPrompt();
+});
+$('#btnUndo').addEventListener('click', undo);
+$('#btnRedo').addEventListener('click', redo);
+
+/* ════════════════════════════════════════
+   タブ切替
+   ════════════════════════════════════════ */
+function showTab(name){
+  $$('.tabbar button').forEach(b=> b.classList.toggle('active', b.dataset.tab === name));
+  $$('.screen').forEach(s=> s.classList.remove('active'));
+  $('#screen-' + name).classList.add('active');
+  if(name === 'maps') renderMapList();
+  if(name === 'canvas'){
+    renderCanvasState();
+    requestAnimationFrame(()=>{
+      if(!cur) return;
+      renderMap(!viewInited);
+      if(!viewInited){ fitView(); viewInited = true; }
+    });
+  }
+  deselect();
+  closeToolMenu();
+}
+$$('.tabbar button').forEach(b=> b.addEventListener('click', ()=> showTab(b.dataset.tab)));
+
+function renderCanvasState(){
+  const empty = !cur;
+  $('#canvasEmpty').hidden = !empty;
+  $('#viewport').style.visibility = empty ? 'hidden' : 'visible';
+  $('#mapTitleChip').style.display = empty ? 'none' : 'flex';
+  $('.histbar').style.display = empty ? 'none' : 'flex';
+  closeToolMenu();
+  updateHist();
+}
+function openMap(id){
+  const m = maps.find(x=> x.id === id); if(!m) return;
+  cur = m; selectedId = null; undoStack = []; redoStack = []; updateHist();
+  viewInited = true;
+  store.setItem(LS_LAST, id);
+  showTab('canvas');
+  renderTitle();
+  renderMap(true);
+  requestAnimationFrame(()=> fitView());
+}
+function renderTitle(){ if(cur) $('#mapTitleText').textContent = cur.title; }
+$('#mapTitleChip').addEventListener('click', ()=>{
+  if(!cur) return;
+  promptSheet('マップの名前', cur.title, 'マップ名を入力', v=>{
+    snapshot(); cur.title = v;
+    touch(); renderTitle();
+  });
+});
+
+/* ════════════════════════════════════════
+   ツリーレイアウト
+   ════════════════════════════════════════ */
+function leafWeight(n){
+  if(n.collapsed || !n.children.length) return 1;
+  return n.children.reduce((s,c)=> s + leafWeight(c), 0);
+}
+function computeVisible(){
+  const list = [];
+  const root = cur.root;
+  root._color = root.color || ROOT_COLOR; root._dir = 0; root._depth = 0; root._parent = null;
+  list.push(root);
+  if(!root.collapsed){
+    const st = mapStyle();
+    if(st === 'map'){
+      // 左右バランス：手動指定の側を優先し、なければ軽い側へ
+      let wR = 0, wL = 0;
+      root.children.forEach((k,i)=>{
+        const w = leafWeight(k);
+        const dir = (k.side === 1 || k.side === -1) ? k.side : ((wR <= wL) ? 1 : -1);
+        if(dir === 1) wR += w; else wL += w;
+        walk(k, root, 1, k.color || PALETTE[i % PALETTE.length], dir);
+      });
+    } else {
+      root.children.forEach((k,i)=> walk(k, root, 1, k.color || PALETTE[i % PALETTE.length], 1));
+    }
+  }
+  function walk(n, parent, depth, color, dir){
+    n._color = n.color || color; n._dir = dir; n._depth = depth; n._parent = parent;
+    list.push(n);
+    if(!n.collapsed) n.children.forEach(c=> walk(c, n, depth+1, n._color, dir));
+  }
+  return list;
+}
+/* ── レイアウト ─────────────
+   map: 中心から左右へ / right(ツリー): 右のみ /
+   org(組織図): 上から下へ / timeline(年表): 横一列＋下にぶら下げ */
+function layout(){
+  const st = mapStyle();
+  const f = BRANCH_FACTOR[settings.branch] || 1;
+  const root = cur.root;
+  root._x = 0; root._y = 0;
+  if(root.collapsed) return;
+  if(st === 'timeline'){ layoutTimeline(f); return; }
+  const vertical = (st === 'org');
+  const SS = n => vertical ? n._w : n._h;   // 兄弟がならぶ方向のサイズ
+  const GS = n => vertical ? n._h : n._w;   // 枝がのびる方向のサイズ
+  const GAP_S = vertical ? 24 : V_GAP;
+  function sub(n){
+    if(n.collapsed || !n.children.length) return SS(n);
+    const k = n.children.reduce((s,c)=> s + sub(c), 0) + GAP_S * (n.children.length - 1);
+    return Math.max(SS(n), k);
+  }
+  function place(n, parent, dir, sTop){
+    const gap = (n._depth === 1 ? H_GAP1 : H_GAP) * f * (vertical ? .75 : 1);
+    const sMid = sTop + sub(n) / 2;
+    const g = (vertical ? parent._y : parent._x) + dir * (GS(parent)/2 + gap + GS(n)/2);
+    if(vertical){ n._x = sMid; n._y = g; } else { n._x = g; n._y = sMid; }
+    if(!n.collapsed && n.children.length){
+      const tot = n.children.reduce((s,c)=> s + sub(c), 0) + GAP_S * (n.children.length - 1);
+      let cs = sMid - tot / 2;
+      n.children.forEach(c=>{ place(c, n, dir, cs); cs += sub(c) + GAP_S; });
+    }
+  }
+  const kids = root.children;
+  if(st === 'map'){
+    const R = kids.filter(c=> c._dir === 1), L = kids.filter(c=> c._dir === -1);
+    [ [R, 1], [L, -1] ].forEach(([side, dir])=>{
+      const tot = side.reduce((s,c)=> s + sub(c), 0) + GAP_S * Math.max(0, side.length - 1);
+      let s = -tot / 2;
+      side.forEach(c=>{ place(c, root, dir, s); s += sub(c) + GAP_S; });
+    });
+  } else {
+    const tot = kids.reduce((s,c)=> s + sub(c), 0) + GAP_S * Math.max(0, kids.length - 1);
+    let s = -tot / 2;
+    kids.forEach(c=>{ place(c, root, 1, s); s += sub(c) + GAP_S; });
+  }
+}
+function layoutTimeline(f){
+  const root = cur.root;
+  const GAP_S = 24;
+  const subW = n => (n.collapsed || !n.children.length) ? n._w
+    : Math.max(n._w, n.children.reduce((s,c)=> s + subW(c), 0) + GAP_S * (n.children.length - 1));
+  function placeDown(n, parent, sLeft){
+    n._x = sLeft + subW(n) / 2;
+    n._y = parent._y + parent._h / 2 + H_GAP * f * .75 + n._h / 2;
+    if(!n.collapsed && n.children.length){
+      const tot = n.children.reduce((s,c)=> s + subW(c), 0) + GAP_S * (n.children.length - 1);
+      let cs = n._x - tot / 2;
+      n.children.forEach(c=>{ placeDown(c, n, cs); cs += subW(c) + GAP_S; });
+    }
+  }
+  const SP = H_GAP1 * f * .8;
+  let cursor = root._w / 2 + SP;
+  root.children.forEach(k=>{
+    const w = subW(k);
+    k._x = cursor + w / 2; k._y = 0;
+    if(!k.collapsed && k.children.length){
+      const tot = k.children.reduce((s,c)=> s + subW(c), 0) + GAP_S * (k.children.length - 1);
+      let cs = k._x - tot / 2;
+      k.children.forEach(c=>{ placeDown(c, k, cs); cs += subW(c) + GAP_S; });
+    }
+    cursor += w + SP;
+  });
+}
+
+/* ════════════════════════════════════════
+   レンダリング
+   ════════════════════════════════════════ */
+const nodeEls = new Map();  // id → element
+const linkEls = new Map();  // id → path
+
+function renderMap(instant){
+  if(!cur) return;
+  const visible = computeVisible();
+  const visIds = new Set(visible.map(n=> n.id));
+  const nodesLayer = $('#nodes');
+  $('#world').dataset.shape = mapDeco().shape;
+
+  // 消えるノード：親の位置へ吸い込まれて消える
+  for(const [id, el] of nodeEls){
+    if(!visIds.has(id)){
+      const px = el._lastParentX, py = el._lastParentY;
+      el.classList.add('exit');
+      if(px !== undefined) el.style.transform = `translate(${px}px,${py}px) translate(-50%,-50%) scale(.5)`;
+      setTimeout(()=> el.remove(), 260);
+      nodeEls.delete(id);
+      const p = linkEls.get(id);
+      if(p){ p.style.opacity = 0; setTimeout(()=> p.remove(), 260); linkEls.delete(id); }
+    }
+  }
+
+  // ノードDOMを同期
+  visible.forEach(n=>{
+    let el = nodeEls.get(n.id);
+    if(!el){
+      el = document.createElement('div');
+      el.className = 'node enter';
+      el.dataset.id = n.id;
+      el.innerHTML = '<div class="node-pill press"></div>';
+      nodesLayer.appendChild(el);
+      nodeEls.set(n.id, el);
+      // 親の位置から生えるアニメーション
+      const p = n._parent;
+      if(p && p._x !== undefined && !instant){
+        el.style.transform = `translate(${p._x}px,${p._y}px) translate(-50%,-50%) scale(.5)`;
+      }
+    }
+    const pill = el.firstChild;
+    if(pill.dataset.text !== n.text){ pill.dataset.text = n.text; pill.textContent = n.text; }
+    el.className = `node d${Math.min(n._depth,2)}${n.id === selectedId ? ' selected' : ''}${el.classList.contains('enter') ? ' enter' : ''}`;
+    el.style.setProperty('--c', n._color);
+    // 折りたたみバッジ
+    let badge = el.querySelector('.badge');
+    if(n.collapsed && n.children.length){
+      if(!badge){ badge = document.createElement('span'); badge.className = 'badge'; el.appendChild(badge); }
+      badge.textContent = countDesc(n);
+      const st = mapStyle();
+      badge.className = 'badge ' + ((st === 'org' || (st === 'timeline' && n._depth > 0)) ? 'b' : (n._dir >= 0 ? 'r' : 'l'));
+    } else if(badge) badge.remove();
+  });
+
+  // 計測
+  visible.forEach(n=>{
+    const el = nodeEls.get(n.id);
+    n._w = el.offsetWidth; n._h = el.offsetHeight;
+  });
+
+  layout();
+
+  // 位置適用
+  visible.forEach(n=>{
+    const el = nodeEls.get(n.id);
+    if(n._parent){ el._lastParentX = n._parent._x; el._lastParentY = n._parent._y; }
+    const apply = ()=>{
+      el.style.transform = `translate(${n._x}px,${n._y}px) translate(-50%,-50%)`;
+      el.classList.remove('enter');
+    };
+    if(el.classList.contains('enter') && !instant){
+      el.offsetWidth; // reflow
+      requestAnimationFrame(apply);
+    } else apply();
+    if(instant){
+      el.style.transition = 'none';
+      requestAnimationFrame(()=>{ el.offsetWidth; el.style.transition = ''; });
+    }
+  });
+
+  drawLinks(visible);
+  positionCtxbar();
+}
+
+function drawLinks(visible){
+  const svg = $('#links');
+  const st = mapStyle(), deco = mapDeco();
+  const visIds = new Set(visible.map(n=> n.id));
+  for(const [id, p] of linkEls){
+    if(!visIds.has(id)){ p.remove(); linkEls.delete(id); }
+  }
+  const baseW = { thin:2, normal:3, bold:4.6 }[deco.width] || 3;
+  const dash = deco.dash === 'dashed' ? '9 7' : deco.dash === 'dotted' ? '0.1 8' : '';
+  let prevSpine = cur.root;
+  visible.forEach(n=>{
+    if(!n._parent) return;
+    let p = linkEls.get(n.id);
+    const isNew = !p;
+    if(isNew){
+      p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.classList.add('enter');
+      svg.appendChild(p);
+      linkEls.set(n.id, p);
+    }
+    let d;
+    if(st === 'timeline' && n._depth === 1){
+      // 年表：前のできごとと直線のスパインでつなぐ
+      const from = prevSpine; prevSpine = n;
+      d = `M${from._x + from._w/2 - 3} ${from._y} L${n._x - n._w/2 + 3} ${n._y}`;
+    } else if(st === 'org' || st === 'timeline'){
+      const x1 = n._parent._x, y1 = n._parent._y + n._parent._h/2 - 3;
+      const x2 = n._x, y2 = n._y - n._h/2 + 3;
+      const dy = Math.max(12, (y2 - y1) * .5);
+      d = deco.line === 'straight' ? `M${x1} ${y1} L${x2} ${y2}`
+        : deco.line === 'elbow'    ? `M${x1} ${y1} V${(y1 + y2) / 2} H${x2} V${y2}`
+        : `M${x1} ${y1} C${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
+    } else {
+      const dir = n._dir || 1;
+      const x1 = n._parent._x + dir * (n._parent._w/2 - 4), y1 = n._parent._y;
+      const x2 = n._x - dir * (n._w/2 - 2), y2 = n._y;
+      const dx = Math.max(18, Math.abs(x2 - x1) * .5);
+      d = deco.line === 'straight' ? `M${x1} ${y1} L${x2} ${y2}`
+        : deco.line === 'elbow'    ? `M${x1} ${y1} H${(x1 + x2) / 2} V${y2} H${x2}`
+        : `M${x1} ${y1} C${x1 + dir*dx} ${y1}, ${x2 - dir*dx} ${y2}, ${x2} ${y2}`;
+    }
+    p.setAttribute('d', d);
+    p.setAttribute('stroke', deco.color || n._color);
+    p.setAttribute('stroke-width', n._depth <= 1 ? baseW : baseW * .85);
+    if(dash) p.setAttribute('stroke-dasharray', dash); else p.removeAttribute('stroke-dasharray');
+    if(isNew) requestAnimationFrame(()=> requestAnimationFrame(()=> p.classList.remove('enter')));
+  });
+}
+
+/* ── コンテキストバー ───────────── */
+function ctxButtons(n, isRoot){
+  const st = mapStyle();
+  const B = (act, icon, cls='') =>
+    `<button class="press ${cls}" data-act="${act}"><svg class="ic" viewBox="0 0 24 24"><use href="#${icon}"/></svg></button>`;
+  let btns = '';
+  if(isRoot){
+    // 中心ピル：マップ構造では左右どちらに枝を出すか選べる
+    if(st === 'map') btns += B('addl','i-add-l','cadd') + B('addr','i-add-r','cadd');
+    else btns += B('child','i-add-child','cadd');
+  } else {
+    btns += B('sib','i-add-sib','cadd') + B('child','i-add-child','cadd');
+  }
+  btns += B('edit','i-pen') + B('color','i-drop');
+  if(!isRoot) btns += B('del','i-trash','cdel');
+  return btns;
+}
+function positionCtxbar(){
+  const bar = $('#ctxbar');
+  if(!selectedId || !cur){ bar.classList.add('hide'); return; }
+  const found = findNode(cur.root, selectedId);
+  if(!found){ bar.classList.add('hide'); return; }
+  const n = found.node;
+  if(n._x === undefined){ bar.classList.add('hide'); return; }
+  const key = n.id + '|' + (found.parent ? 'c' : 'r') + '|' + mapStyle();
+  if(bar.dataset.key !== key){ bar.dataset.key = key; bar.innerHTML = ctxButtons(n, !found.parent); }
+  bar.classList.remove('hide');
+  const inv = 1 / view.z;
+  const bw = bar.offsetWidth, bh = bar.offsetHeight;
+  bar.style.transform =
+    `translate(${n._x}px,${n._y - n._h/2 - 10}px) scale(${inv}) translate(${-bw/2}px,${-bh}px)`;
+}
+function select(id){
+  selectedId = id;
+  $$('.node.selected').forEach(el=> el.classList.remove('selected'));
+  if(id){ const el = nodeEls.get(id); el && el.classList.add('selected'); }
+  positionCtxbar();
+}
+function deselect(){ select(null); }
+
+$('#ctxbar').addEventListener('pointerdown', e=> e.stopPropagation());
+$('#ctxbar').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b || !selectedId) return;
+  const act = b.dataset.act;
+  const found = findNode(cur.root, selectedId); if(!found) return;
+  const n = found.node;
+  if(act === 'addl') addChildTo(n, -1);
+  if(act === 'addr') addChildTo(n, 1);
+  if(act === 'child') addChildTo(n);
+  if(act === 'sib') addSiblingTo(n, found.parent);
+  if(act === 'edit') editNode(n);
+  if(act === 'color') colorSheet(n);
+  if(act === 'del') confirmSheet('この枝を削除？',
+      n.children.length ? `「${escapeHtml(n.text)}」と、その先の${countDesc(n)}個の枝もいっしょに消えます。` : `「${escapeHtml(n.text)}」を削除します。`,
+      '削除する', ()=>{
+        snapshot();
+        found.parent.children = found.parent.children.filter(c=> c.id !== n.id);
+        deselect(); touch(); renderMap(); toast('削除しました');
+      });
+});
+
+function addChildTo(parent, side){
+  promptSheet('枝のことば', '', 'ことばを入力', v=>{
+    snapshot();
+    const c = newNode(v);
+    if(side === 1 || side === -1) c.side = side;
+    parent.children.push(c);
+    parent.collapsed = false;
+    touch(); select(c.id); renderMap();
+  });
+}
+function addSiblingTo(n, parent){
+  if(!parent) return;
+  promptSheet('となりの枝のことば', '', 'ことばを入力', v=>{
+    snapshot();
+    const c = newNode(v);
+    if(parent === cur.root && mapStyle() === 'map') c.side = n.side || n._dir || 1;
+    const i = parent.children.indexOf(n);
+    parent.children.splice(i + 1, 0, c);
+    touch(); select(c.id); renderMap();
+  });
+}
+function editNode(n){
+  promptSheet('ことばを編集', n.text, 'ことばを入力', v=>{
+    snapshot(); n.text = v;
+    if(!n._parent && cur) { cur.title = v; renderTitle(); }
+    touch(); renderMap();
+  });
+}
+function colorSheet(n){
+  const dots = PALETTE.map(c=>
+    `<button class="press${n.color===c?' sel':''}" data-c="${c}"><span class="dot" style="background:${c}"></span></button>`).join('');
+  openSheet(`
+    <div class="sheet-title">枝のいろ</div>
+    <div class="palette">
+      ${dots}
+      <button class="press${!n.color?' sel':''}" data-c=""><span class="auto">自動</span></button>
+    </div>
+    <div class="sheet-note">いろは、その先の枝にも引きつがれます</div>`, sh=>{
+    sh.querySelector('.palette').addEventListener('click', e=>{
+      const b = e.target.closest('button'); if(!b) return;
+      snapshot(); n.color = b.dataset.c || null;
+      touch(); renderMap(); closeSheet();
+    });
+  });
+}
+
+/* ── マップのスタイル（構造＋見た目） ── */
+function styleSheet(){
+  if(!cur) return;
+  const deco = mapDeco();
+  const seg = (key, opts) => `<div class="seg s-seg" data-key="${key}">` +
+    opts.map(([v,l])=> `<button data-v="${v}" class="press${((key==='style' ? mapStyle() : (deco[key] ?? '')) === v) ? ' active' : ''}">${l}</button>`).join('') + `</div>`;
+  const colors = `<div class="palette" data-key="color">` +
+    `<button class="press${!deco.color ? ' sel' : ''}" data-v=""><span class="auto">自動</span></button>` +
+    PALETTE.map(c=> `<button class="press${deco.color === c ? ' sel' : ''}" data-v="${c}"><span class="dot" style="background:${c}"></span></button>`).join('') + `</div>`;
+  openSheet(`
+    <div class="sheet-title">マップのスタイル</div>
+    <div class="sheet-body">
+      <div class="stl-label">こうぞう</div>
+      ${seg('style', [['map','マップ'],['right','ツリー'],['org','組織図'],['timeline','年表']])}
+      <div class="stl-label">タイルのかたち</div>
+      ${seg('shape', [['pill','ピル'],['round','まる角'],['square','かくかく']])}
+      <div class="stl-label">線のかたち</div>
+      ${seg('line', [['curve','カーブ'],['straight','まっすぐ'],['elbow','カギ線']])}
+      <div class="stl-label">線のみため</div>
+      ${seg('dash', [['solid','じっせん'],['dashed','はせん'],['dotted','てんせん']])}
+      <div class="stl-label">線のふとさ</div>
+      ${seg('width', [['thin','ほそめ'],['normal','ふつう'],['bold','ふとめ']])}
+      <div class="stl-label">線のいろ</div>
+      ${colors}
+    </div>
+    <div class="sheet-actions"><button class="btn btn-primary press" id="stlClose">とじる</button></div>`, sh=>{
+    sh.addEventListener('click', e=>{
+      if(e.target.closest('#stlClose')){ closeSheet(); return; }
+      const b = e.target.closest('button[data-v]');
+      if(!b) return;
+      const wrap = b.closest('[data-key]');
+      const key = wrap.dataset.key, v = b.dataset.v;
+      if(key === 'style'){ cur.style = v; }
+      else if(key === 'color'){ deco.color = v || null; }
+      else deco[key] = v;
+      wrap.querySelectorAll('button').forEach(x=>{
+        x.classList.toggle('active', x === b);
+        x.classList.toggle('sel', x === b);
+      });
+      touch(); renderMap();
+      if(key === 'style') fitView();   // 構造が変わったら全体表示（ライブプレビュー）
+    });
+  });
+}
+
+/* ════════════════════════════════════════
+   パン・ズーム・タップ
+   ════════════════════════════════════════ */
+const vp = $('#viewport');
+function applyView(){
+  $('#world').style.transform = `translate(${view.x}px,${view.y}px) scale(${view.z})`;
+  // ドット背景もいっしょに動かして「キャンバス全体が動いている」ように見せる
+  vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
+  vp.style.backgroundSize = `${26 * view.z}px ${26 * view.z}px`;
+  positionCtxbar();
+}
+function fitView(){
+  if(!cur) return;
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,found=false;
+  for(const [id,el] of nodeEls){
+    const f = findNode(cur.root,id); if(!f || f.node._x===undefined) continue;
+    const n=f.node; found=true;
+    minX=Math.min(minX,n._x-n._w/2); maxX=Math.max(maxX,n._x+n._w/2);
+    minY=Math.min(minY,n._y-n._h/2); maxY=Math.max(maxY,n._y+n._h/2);
+  }
+  const W=vp.clientWidth,H=vp.clientHeight;
+  if(!found){ view={x:W/2,y:H/2,z:1}; applyView(); return; }
+  const pad=70;
+  const z=Math.min(1.4,Math.max(.3,Math.min((W-pad*2)/(maxX-minX||1),(H-pad*2)/(maxY-minY||1))));
+  view.z=z;
+  view.x=W/2-(minX+maxX)/2*z;
+  view.y=H/2-(minY+maxY)/2*z;
+  applyView();
+}
+function zoomAt(cx, cy, factor){
+  const nz = Math.min(2.4, Math.max(.25, view.z * factor));
+  const k = nz / view.z;
+  view.x = cx - (cx - view.x) * k;
+  view.y = cy - (cy - view.y) * k;
+  view.z = nz;
+  applyView();
+}
+vp.addEventListener('wheel', e=>{
+  e.preventDefault();
+  zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : .9);
+}, {passive:false});
+
+const pointers = new Map();
+let gesture = null;
+// ページ全体が動いてしまうのを防ぐ（キャンバス内はアプリ側でパン処理）
+vp.addEventListener('touchmove', e=> e.preventDefault(), {passive:false});
+vp.addEventListener('pointerdown', e=>{
+  try{ vp.setPointerCapture(e.pointerId); }catch(err){}
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pointers.size === 1){
+    const nodeEl = e.target.closest('.node');
+    // 「選択中の」ピルだけがつかめる。それ以外はどこを触ってもキャンバス移動
+    let nodeDrag = null;
+    if(nodeEl && cur && selectedId && nodeEl.dataset.id === selectedId){
+      const f = findNode(cur.root, selectedId);
+      if(f && f.parent) nodeDrag = { node: f.node, el: nodeEl };
+    }
+    gesture = { moved:false, sx:e.clientX, sy:e.clientY, vx:view.x, vy:view.y,
+                target: nodeEl, nodeDrag };
+  } else if(pointers.size === 2){
+    const pts = [...pointers.values()];
+    gesture = { pinch:true,
+      d0: Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y),
+      z0: view.z,
+      cx:(pts[0].x+pts[1].x)/2, cy:(pts[0].y+pts[1].y)/2,
+      vx:view.x, vy:view.y };
+  }
+});
+vp.addEventListener('pointermove', e=>{
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(!gesture) return;
+  if(gesture.pinch && pointers.size === 2){
+    const pts = [...pointers.values()];
+    const d = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+    const cx=(pts[0].x+pts[1].x)/2, cy=(pts[0].y+pts[1].y)/2;
+    const nz = Math.min(2.4, Math.max(.25, gesture.z0 * (d / gesture.d0)));
+    // 開始時に指の中心にあった点が、いまの指の中心に来るように
+    view.x = cx - (gesture.cx - gesture.vx) * (nz / gesture.z0);
+    view.y = cy - (gesture.cy - gesture.vy) * (nz / gesture.z0);
+    view.z = nz;
+    applyView();
+  } else if(!gesture.pinch){
+    const dx = e.clientX - gesture.sx, dy = e.clientY - gesture.sy;
+    if(!gesture.moved && Math.hypot(dx,dy) > 7){
+      gesture.moved = true;
+      if(gesture.nodeDrag){
+        gesture.nodeDrag.el.classList.add('dragging');
+        $('#ctxbar').classList.add('hide');
+      }
+    }
+    if(gesture.moved){
+      if(gesture.nodeDrag){
+        // 選択中ピルをつかんで移動（ズーム率でワールド座標に変換）
+        const n = gesture.nodeDrag.node;
+        gesture.wx = n._x + dx / view.z;
+        gesture.wy = n._y + dy / view.z;
+        gesture.nodeDrag.el.style.transform =
+          `translate(${gesture.wx}px,${gesture.wy}px) translate(-50%,-50%) scale(1.06)`;
+      } else {
+        view.x = gesture.vx + dx; view.y = gesture.vy + dy;
+        applyView();
+      }
+    }
+  }
+});
+function endPointer(e){
+  if(!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if(gesture && !gesture.pinch && pointers.size === 0){
+    if(gesture.moved && gesture.nodeDrag){
+      gesture.nodeDrag.el.classList.remove('dragging');
+      applyNodeDrop(gesture.nodeDrag.node, gesture.wx, gesture.wy);
+    } else if(!gesture.moved){
+      if(gesture.target) tapNode(gesture.target.dataset.id);
+      else { deselect(); closeToolMenu(); }
+    }
+  }
+  if(pointers.size === 0) gesture = null;
+  else if(pointers.size === 1 && gesture && gesture.pinch){
+    const p = [...pointers.values()][0];
+    gesture = { moved:true, sx:p.x, sy:p.y, vx:view.x, vy:view.y, target:null };
+  }
+}
+vp.addEventListener('pointerup', endPointer);
+vp.addEventListener('pointercancel', endPointer);
+
+function tapNode(id){
+  if(!cur) return;
+  const found = findNode(cur.root, id); if(!found) return;
+  const n = found.node;
+  const now = Date.now();
+  const isDouble = lastTap.id === id && (now - lastTap.t) < 320;
+  lastTap = { id, t: now };
+  if(isDouble){ select(id); editNode(n); return; }
+  // 1回目のタップは選択のみ。すでに選択中のピルをタップすると開閉
+  if(selectedId !== id){ select(id); closeToolMenu(); return; }
+  if(n.children.length){
+    n.collapsed = !n.collapsed;
+    touch(); renderMap();
+  }
+  closeToolMenu();
+}
+// 開閉はUndo対象にしない（軽量）
+function snapshotLight(){}
+
+/* ── 選択中ピルのドロップ：ならびかえ・左右入れかえ ── */
+function applyNodeDrop(n, x, y){
+  if(!cur || x === undefined){ renderMap(); return; }
+  const f = findNode(cur.root, n.id);
+  if(!f || !f.parent){ renderMap(); return; }
+  snapshot();
+  const st = mapStyle();
+  const parent = f.parent;
+  let newDir = n._dir;
+  if(st === 'map' && parent === cur.root){ newDir = x >= 0 ? 1 : -1; n.side = newDir; }
+  const byX = (st === 'org' || st === 'timeline');   // 兄弟が横にならぶモードはx座標で判定
+  const pos = byX ? x : y;
+  const others = parent.children.filter(c=> c !== n);
+  const relevant = (st === 'map' && parent === cur.root) ? others.filter(c=> c._dir === newDir) : others;
+  let before = null;
+  for(const c of relevant){ if(pos < (byX ? c._x : c._y)){ before = c; break; } }
+  const idx = before ? others.indexOf(before) : others.length;
+  others.splice(idx, 0, n);
+  parent.children = others;
+  touch(); renderMap();
+}
+
+/* ════════════════════════════════════════
+   ツールメニュー
+   ════════════════════════════════════════ */
+let toolOpen = false;
+function closeToolMenu(){
+  toolOpen = false;
+  $('#toolMenu').classList.remove('open');
+  $('#fabMain').classList.remove('open');
+}
+function toggleToolMenu(){
+  toolOpen = !toolOpen;
+  $('#toolMenu').classList.toggle('open', toolOpen);
+  $('#fabMain').classList.toggle('open', toolOpen);
+  if(toolOpen){
+    $$('#toolMenu .tool-btn').forEach((b,i,arr)=>{
+      b.style.transitionDelay = ((arr.length-1-i) * 35) + 'ms';
+    });
+  }
+}
+$('#toolMenu').addEventListener('click', e=>{
+  const b = e.target.closest('.tool-btn'); if(!b || !cur) return;
+  const t = b.dataset.tool;
+  closeToolMenu();
+  if(t === 'addChild'){
+    const target = selectedId ? findNode(cur.root, selectedId)?.node : cur.root;
+    addChildTo(target || cur.root);
+  }
+  if(t === 'style') styleSheet();
+  if(t === 'center') fitView();
+  if(t === 'expandAll'){ snapshot(); walkAll(cur.root, n=> n.collapsed = false); touch(); renderMap(); }
+  if(t === 'collapseAll'){
+    snapshot();
+    cur.root.children.forEach(c=> walkAll(c, n=>{ if(n.children.length) n.collapsed = true; }));
+    cur.root.collapsed = false;
+    deselect(); touch(); renderMap();
+  }
+});
+function walkAll(n, fn){ fn(n); n.children.forEach(c=> walkAll(c, fn)); }
+
+/* ════════════════════════════════════════
+   JSON 書き出し・読み込み
+   ════════════════════════════════════════ */
+function exportJSON(data, name){
+  const json = JSON.stringify(data, NO_PRIVATE, 2);
+  try{
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `nouto_${name}_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 3000);
+    toast('JSONを書き出しました');
+  }catch(e){ copySheet(json); }
+}
+function copySheet(json){
+  openSheet(`
+    <div class="sheet-title">JSONをコピー</div>
+    <textarea class="sheet-input" id="jsonArea" readonly></textarea>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost press" id="shCancel">とじる</button>
+      <button class="btn btn-primary press" id="shCopy">ぜんぶコピー</button>
+    </div>`, sh=>{
+    const ta = sh.querySelector('#jsonArea'); ta.value = json;
+    sh.querySelector('#shCopy').addEventListener('click', async ()=>{
+      try{ await navigator.clipboard.writeText(json); toast('コピーしました'); }
+      catch(e){ ta.focus(); ta.select(); document.execCommand('copy'); toast('コピーしました'); }
+    });
+    sh.querySelector('#shCancel').addEventListener('click', closeSheet);
+  });
+}
+function allData(){ return { app:'nouto', version:1, exported:new Date().toISOString(), maps }; }
+$('#btnExportAll').addEventListener('click', ()=>{
+  if(!maps.length){ toast('マップがありません'); return; }
+  exportJSON(allData(), 'all');
+});
+$('#btnCopyAll').addEventListener('click', ()=>{
+  if(!maps.length){ toast('マップがありません'); return; }
+  copySheet(JSON.stringify(allData(), NO_PRIVATE, 2));
+});
+$('#btnImport').addEventListener('click', ()=>{
+  openSheet(`
+    <div class="sheet-title">JSONを読み込み</div>
+    <div class="sheet-list">
+      <button class="press" id="impFile"><svg class="ic" viewBox="0 0 24 24"><use href="#i-import"/></svg>ファイルをえらぶ</button>
+      <button class="press" id="impPaste"><svg class="ic" viewBox="0 0 24 24"><use href="#i-copy"/></svg>貼り付けて読み込み</button>
+    </div>
+    <div class="sheet-note">いまあるマップは消えず、追加で読み込まれます</div>`, sh=>{
+    sh.querySelector('#impFile').addEventListener('click', ()=>{ closeSheet(); $('#importFile').click(); });
+    sh.querySelector('#impPaste').addEventListener('click', ()=>{
+      closeSheet();
+      setTimeout(()=> openSheet(`
+        <div class="sheet-title">JSONを貼り付け</div>
+        <textarea class="sheet-input" id="pasteArea" placeholder='{"app":"nouto", ...}'></textarea>
+        <div class="sheet-actions">
+          <button class="btn btn-ghost press" id="shCancel">キャンセル</button>
+          <button class="btn btn-primary press" id="shOk">読み込む</button>
+        </div>`, s2=>{
+        s2.querySelector('#shOk').addEventListener('click', ()=>{ importText(s2.querySelector('#pasteArea').value); closeSheet(); });
+        s2.querySelector('#shCancel').addEventListener('click', closeSheet);
+      }), 250);
+    });
+  });
+});
+$('#importFile').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=> importText(r.result);
+  r.readAsText(f);
+  e.target.value = '';
+});
+function importText(text){
+  try{
+    const data = JSON.parse(text);
+    let incoming = Array.isArray(data) ? data : (data.maps || (data.root ? [data] : null));
+    if(!incoming || !incoming.length) throw 0;
+    let count = 0;
+    incoming.forEach(m=>{
+      if(!m.root || !m.title) return;
+      const copy = cleanClone(m);
+      copy.id = uid(); reassignIds(copy.root);
+      copy.updated = Date.now(); copy.created = copy.created || Date.now();
+      maps.push(copy); count++;
+    });
+    if(!count) throw 0;
+    save(); renderMapList();
+    toast(`${count}まいのマップを読み込みました`);
+  }catch(e){ toast('読み込めませんでした。JSONを確認してください'); }
+}
+$('#btnWipe').addEventListener('click', ()=>{
+  confirmSheet('すべてのデータを削除？', 'すべてのマップとノードが消えます。この操作はもとに戻せません。書き出しをしてからの削除がおすすめです。', 'すべて削除する', ()=>{
+    maps = []; cur = null; undoStack = [];
+    store.removeItem(LS_MAPS); store.removeItem(LS_LAST);
+    $('#nodes').innerHTML = ''; $('#links').innerHTML = ''; nodeEls.clear(); linkEls.clear();
+    renderMapList(); renderCanvasState(); toast('すべて削除しました');
+  });
+});
+
+/* ════════════════════════════════════════
+   起動
+   ════════════════════════════════════════ */
+window.addEventListener('resize', ()=>{ if(cur) positionCtxbar(); });
+document.addEventListener('gesturestart', e=> e.preventDefault());
+
+loadAll();
+applyTheme();
+updateHist();
+applyBranchSeg();
+renderMapList();
+renderCanvasState();
+const last = store.getItem(LS_LAST);
+if(last && maps.find(m=> m.id === last)){
+  cur = maps.find(m=> m.id === last);
+  renderTitle();
+}
+</script>
+</body>
+</html>
